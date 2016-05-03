@@ -1,9 +1,11 @@
 package com.github.rskupnik.networking;
 
+import com.github.rskupnik.Defaults;
 import com.github.rskupnik.exceptions.PigeonServerException;
 import com.github.rskupnik.glue.designpatterns.observer.Message;
 import com.github.rskupnik.glue.designpatterns.observer.Observable;
 import com.github.rskupnik.glue.designpatterns.observer.Observer;
+import com.github.rskupnik.parrot.Parrot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,20 +20,28 @@ public final class Server extends Thread implements Observer {
 
     private static final Logger log = LogManager.getLogger(Server.class);
 
+    public enum ReceiverMode {
+        THREADPOOLED,
+        MULTITHREADED
+    }
+
     private final int port;
+    private final ReceiverMode receiverMode;
     private final ServerSocket serverSocket;
     private final Map<UUID, Connection> connections = new HashMap<UUID, Connection>();
 
     private boolean exit;
 
-    public Server(int port) throws PigeonServerException {
+    public Server(int port, String receiverMode) throws PigeonServerException {
         this.port = port;
 
         try {
             this.serverSocket = new ServerSocket(port);
-        } catch (IOException e) {
+            this.receiverMode = ReceiverMode.valueOf(receiverMode.toUpperCase());
+        } catch (IOException | IllegalArgumentException e) {
             throw new PigeonServerException(e.getMessage(), e);
         }
+
     }
 
     @Override
@@ -60,6 +70,10 @@ public final class Server extends Thread implements Observer {
         }
     }
 
+    public void halt() {
+        exit = true;
+    }
+
     public void update(Observable observable, Message message, Object payload) {
         switch (message) {
             case DISCONNECTED:
@@ -82,5 +96,9 @@ public final class Server extends Thread implements Observer {
         }
 
         connection.send(packet);
+    }
+
+    public ReceiverMode getReceiverMode() {
+        return receiverMode;
     }
 }
