@@ -12,9 +12,15 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public final class Server extends Thread implements Observer {
 
@@ -27,28 +33,55 @@ public final class Server extends Thread implements Observer {
 
     private final int port;
     private final ReceiverMode receiverMode;
+    private final int receiverThreads;
+
     private final ServerSocket serverSocket;
     private final Map<UUID, Connection> connections = new HashMap<UUID, Connection>();
+    private final ExecutorService executorService;
 
     private boolean exit;
 
-    public Server(int port, String receiverMode) throws PigeonServerException {
+    public Server(int port, Server.ReceiverMode receiverMode, int receiverThreads) throws PigeonServerException {
         this.port = port;
+        this.receiverThreads = receiverThreads;
+        this.receiverMode = receiverMode;
 
         try {
             this.serverSocket = new ServerSocket(port);
-            this.receiverMode = ReceiverMode.valueOf(receiverMode.toUpperCase());
-        } catch (IOException | IllegalArgumentException e) {
+            serverSocket.setSoTimeout(200);
+        } catch (IOException e) {
             throw new PigeonServerException(e.getMessage(), e);
         }
 
+        if (this.receiverMode == ReceiverMode.THREADPOOLED) {
+            executorService = Executors.newFixedThreadPool(this.receiverThreads);
+        } else
+            executorService = null;
     }
 
     @Override
     public void run() {
         try {
             while (!exit) {
-                Socket clientSocket = serverSocket.accept();
+                Socket clientSocket = null;
+                try {
+                    clientSocket = serverSocket.accept();
+                } catch (SocketTimeoutException e) {
+                    if (exit)
+                        break;
+                }
+
+                if (clientSocket == null)
+                    continue;
+
+                // Determine the number of free threads in case of THREADPOOLED mode and decline connection if there are no threads available
+                if (receiverMode == ReceiverMode.THREADPOOLED) {
+                    ThreadPoolExecutor tpc = (ThreadPoolExecutor) executorService;
+                    if (tpc.getActiveCount() >= receiverThreads) {
+                        log.info("Connection from IP "+clientSocket.getInetAddress().getHostAddress()+" was declined due to not enough threads to handle it.");
+                        continue;
+                    }
+                }
 
                 UUID uuid = UUID.randomUUID();
                 Connection connection = new Connection(uuid, serverSocket, clientSocket);
@@ -56,11 +89,20 @@ public final class Server extends Thread implements Observer {
                     connection.attach(this);
                     connections.put(uuid, connection);
                     log.info(String.format("Accepted a new connection [%s] from IP: %s", uuid, clientSocket.getInetAddress().getHostAddress()));
-                    connection.start();
+
+                    if (receiverMode == ReceiverMode.MULTITHREADED) {
+                        Thread thread = new Thread(connection);
+                        thread.setDaemon(true);
+                        thread.setName("Connection-" + uuid.toString().substring(0, 8));
+                        thread.start();
+                    } else if (receiverMode == ReceiverMode.THREADPOOLED) {
+                        executorService.execute(connection);
+                    }
                 }
             }
         } catch (IOException e) {
-            log.error(e.getMessage(), e);
+            if (!(e instanceof SocketException))
+                log.error(e.getMessage(), e);
         } finally {
             try {
                 serverSocket.close();
@@ -72,6 +114,13 @@ public final class Server extends Thread implements Observer {
 
     public void halt() {
         exit = true;
+        if (serverSocket != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void update(Observable observable, Message message, Object payload) {

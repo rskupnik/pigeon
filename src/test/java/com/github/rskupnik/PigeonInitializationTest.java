@@ -86,7 +86,7 @@ public class PigeonInitializationTest {
         pigeon.start();
 
         // then
-        assertEquals(Server.ReceiverMode.valueOf(Defaults.RECEIVER_MODE.toUpperCase()), pigeon.getReceiverMode());
+        assertEquals(Defaults.RECEIVER_MODE, pigeon.getReceiverMode());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class PigeonInitializationTest {
     public void shouldStartWithPassedReceiverMode() throws PigeonException {
         // given
         String invalidMode = "threadpooled";
-        String mode = "multithreaded";
+        Server.ReceiverMode mode = Server.ReceiverMode.MULTITHREADED;
         when(parrot.get("receiver_mode")).thenReturn(Optional.of(invalidMode));
         pigeon = Pigeon.newServer().withReceiverMode(mode).build();
 
@@ -115,6 +115,6 @@ public class PigeonInitializationTest {
         pigeon.start();
 
         // then
-        assertEquals(Server.ReceiverMode.valueOf(mode.toUpperCase()), pigeon.getReceiverMode());
+        assertEquals(mode, pigeon.getReceiverMode());
     }
 }

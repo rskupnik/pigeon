@@ -1,6 +1,7 @@
 package com.github.rskupnik;
 
 import com.github.rskupnik.exceptions.PigeonException;
+import com.github.rskupnik.networking.Server;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -14,15 +15,14 @@ public class ClientEmulator {
 
     public ClientEmulator() throws IOException {
         try {
-            Pigeon.newServer().withPort(9432).build().start();
-
-            socket = new Socket("localhost", 9432);
+            socket = new Socket("localhost", 9434);
             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-            outputStream.write(1);
+            outputStream.write(5);
+
             while (true) {
 
             }
-        } catch (UnknownHostException | PigeonException e) {
+        } catch (UnknownHostException e) {
             e.printStackTrace();
         } finally {
             socket.close();
