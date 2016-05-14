@@ -31,9 +31,16 @@ public final class Server extends Thread implements Observer {
         MULTITHREADED
     }
 
+    public enum IncomingPacketHandleMode {
+        QUEUE,
+        HANDLER
+    }
+
     private final int port;
     private final ReceiverMode receiverMode;
     private final int receiverThreads;
+    private final IncomingPacketHandleMode incomingPacketHandleMode;
+    private final IncomingPacketQueue incomingPacketQueue;
 
     private final ServerSocket serverSocket;
     private final Map<UUID, Connection> connections = new HashMap<UUID, Connection>();
@@ -41,10 +48,13 @@ public final class Server extends Thread implements Observer {
 
     private boolean exit;
 
-    public Server(int port, Server.ReceiverMode receiverMode, int receiverThreads) throws PigeonServerException {
+    public Server(int port, ReceiverMode receiverMode, int receiverThreads,
+                  IncomingPacketHandleMode incomingPacketHandleMode, IncomingPacketQueue incomingPacketQueue) throws PigeonServerException {
         this.port = port;
         this.receiverThreads = receiverThreads;
         this.receiverMode = receiverMode;
+        this.incomingPacketHandleMode = incomingPacketHandleMode;
+        this.incomingPacketQueue = incomingPacketQueue;
 
         try {
             this.serverSocket = new ServerSocket(port);
@@ -84,7 +94,7 @@ public final class Server extends Thread implements Observer {
                 }
 
                 UUID uuid = UUID.randomUUID();
-                Connection connection = new Connection(uuid, serverSocket, clientSocket);
+                Connection connection = new Connection(uuid, serverSocket, clientSocket, incomingPacketHandleMode, incomingPacketQueue);
                 if (connection.isOk()) {    // Connection is not considered ok when there is an IOException in the constructor
                     connection.attach(this);
                     connections.put(uuid, connection);

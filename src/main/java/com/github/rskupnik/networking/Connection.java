@@ -1,5 +1,6 @@
 package com.github.rskupnik.networking;
 
+import com.github.rskupnik.exceptions.PigeonServerException;
 import com.github.rskupnik.glue.designpatterns.observer.Message;
 import com.github.rskupnik.glue.designpatterns.observer.Observable;
 import com.github.rskupnik.glue.designpatterns.observer.Observer;
@@ -28,16 +29,22 @@ final class Connection implements Runnable, Observable {
     private DataInputStream clientInputStream;
     private DataOutputStream clientOutputStream;
     private List<Observer> observers = new ArrayList<Observer>();
+    private final Server.IncomingPacketHandleMode incomingPacketHandleMode;
+    private final IncomingPacketQueue incomingPacketQueue;
 
     private boolean exit;
     private boolean ok = true;
 
-    protected Connection(UUID uuid, ServerSocket serverSocket, Socket clientSocket) {
+    protected Connection(UUID uuid, ServerSocket serverSocket, Socket clientSocket,
+                         Server.IncomingPacketHandleMode incomingPacketHandleMode, IncomingPacketQueue incomingPacketQueue) {
         this.uuid = uuid;
         this.serverSocket = serverSocket;
         this.clientSocket = clientSocket;
+        this.incomingPacketHandleMode = incomingPacketHandleMode;
+        this.incomingPacketQueue = incomingPacketQueue;
+
         try {
-            clientSocket.setSoTimeout(200);
+            clientSocket.setSoTimeout(200);     // TODO: Make sure using socket timeouts is good and find out what value is optimal
             this.clientInputStream = new DataInputStream(clientSocket.getInputStream());
             this.clientOutputStream = new DataOutputStream(clientSocket.getOutputStream());
         } catch (IOException e) {
@@ -65,8 +72,26 @@ final class Connection implements Runnable, Observable {
 
                 log.trace("Received a packet, ID: " + packetId);
                 Optional<Object> packet = PacketFactory.incomingPacket(packetId, clientInputStream);
-                log.info("Packet "+(packet.isPresent() ? "is present" : "is not present"));
-                //PacketHandler.handle(packetId, clientInputStream, uuid);
+                if (packet.isPresent()) {
+                    Packet unwrappedPacket = null;
+                    try {
+                        unwrappedPacket = (Packet) packet.get();
+                    } catch (ClassCastException e) {
+                        log.error(String.format("Packet of ID %d has an invalid class: %s", packetId, e.getMessage()));
+                        continue;
+                    }
+
+                    switch (incomingPacketHandleMode) {
+                        default:
+                        case QUEUE:
+                            incomingPacketQueue.push(unwrappedPacket);
+                            break;
+                        case HANDLER:
+                            break;
+                    }
+                } else {
+                    // TODO: Handle a packet parsing exception
+                }
             }
         } catch (IOException e) {
             if (!(e instanceof SocketException))

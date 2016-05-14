@@ -22,11 +22,4 @@ public class ServerEmulator {
     public static void main(String[] args) throws PigeonException {
         new ServerEmulator();
     }
-
-    @IncomingPacket(id=5)
-    class Howdy {
-
-        @PacketDataField
-        private String message;
-    }
 }
