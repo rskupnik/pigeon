@@ -5,26 +5,23 @@
   <groupId>com.github.rskupnik</groupId>
   <artifactId>pigeon</artifactId>
   <version>1.0-SNAPSHOT</version>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-    <packaging>jar</packaging>
-
+  <packaging>pom</packaging>
   <name>pigeon</name>
-  <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <commons-version>1.0-SNAPSHOT</commons-version>
   </properties>
+  
+  <modules>
+	<module>pigeon-commons</module>
+	<module>pigeon-server</module>
+	<module>pigeon-client</module>
+	<module>pigeon-tcp-server</module>
+	<module>pigeon-udp-server</module>
+	<module>pigeon-tcp-client</module>
+	<module>pigeon-udp-client</module>
+  </modules>
 
   <repositories>
     <repository>
@@ -35,6 +32,11 @@
   </repositories>
 
   <dependencies>
+      <dependency>
+          <groupId>com.github.rskupnik</groupId>
+          <artifactId>pigeon-commons</artifactId>
+          <version>${commons-version}</version>
+      </dependency>
     <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
@@ -60,10 +62,18 @@
         <artifactId>log4j-core</artifactId>
         <version>2.5</version>
     </dependency>
-    <dependency>
-        <groupId>org.reflections</groupId>
-        <artifactId>reflections</artifactId>
-        <version>0.9.9-RC1</version>
-    </dependency>
   </dependencies>
+  
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 </project>
