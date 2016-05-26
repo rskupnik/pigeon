@@ -1,6 +1,9 @@
 package com.github.rskupnik.pigeon.tcpserver.init;
 
+import com.github.rskupnik.pigeon.commons.IncomingPacketHandleMode;
+import com.github.rskupnik.pigeon.commons.PacketHandler;
 import com.github.rskupnik.pigeon.commons.PigeonServerBuilder;
+import com.github.rskupnik.pigeon.commons.ServerCallbackHandler;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonServerException;
 import com.github.rskupnik.pigeon.tcpserver.networking.PigeonTcpServer;
 
@@ -8,7 +11,9 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
 
     private int port;
     private int receiverThreadsNumber;
-    private PigeonTcpServer.IncomingPacketHandleMode incomingPacketHandleMode;
+    private IncomingPacketHandleMode incomingPacketHandleMode;
+    private PacketHandler packetHandler;
+    private ServerCallbackHandler serverCallbackHandler;
 
     public PigeonTcpServerBuilder withPort(int port) {
         this.port = port;
@@ -20,8 +25,18 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
         return this;
     }
 
-    public PigeonTcpServerBuilder withIncomingPacketHandleMode(PigeonTcpServer.IncomingPacketHandleMode incomingPacketHandleMode) {
+    public PigeonTcpServerBuilder withIncomingPacketHandleMode(IncomingPacketHandleMode incomingPacketHandleMode) {
         this.incomingPacketHandleMode = incomingPacketHandleMode;
+        return this;
+    }
+
+    public PigeonTcpServerBuilder withPacketHandler(PacketHandler packetHandler) {
+        this.packetHandler = packetHandler;
+        return this;
+    }
+
+    public PigeonTcpServerBuilder withServerCallbackHandler(ServerCallbackHandler serverCallbackHandler) {
+        this.serverCallbackHandler = serverCallbackHandler;
         return this;
     }
 
@@ -33,8 +48,16 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
         return receiverThreadsNumber;
     }
 
-    public PigeonTcpServer.IncomingPacketHandleMode getIncomingPacketHandleMode() {
+    public IncomingPacketHandleMode getIncomingPacketHandleMode() {
         return incomingPacketHandleMode;
+    }
+
+    public PacketHandler getPacketHandler() {
+        return packetHandler;
+    }
+
+    public ServerCallbackHandler getServerCallbackHandler() {
+        return serverCallbackHandler;
     }
 
     public PigeonTcpServer build() throws PigeonServerException {

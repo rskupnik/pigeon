@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.tcpserver.networking;
+package com.github.rskupnik.pigeon.commons;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -1,10 +1,9 @@
 package com.github.rskupnik.pigeon.tcpserver.networking;
 
-import com.github.rskupnik.pigeon.commons.PigeonServer;
+import com.github.rskupnik.pigeon.commons.*;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonServerException;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Message;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observable;
-import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observer;
 import com.github.rskupnik.pigeon.tcpserver.init.PigeonTcpServerBuilder;
 
 import java.io.IOException;
@@ -13,20 +12,16 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public final class PigeonTcpServer extends Thread implements PigeonServer, Observer {
+public final class PigeonTcpServer extends Thread implements PigeonServer {
 
     private static final org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(PigeonTcpServer.class);
-
-    public enum IncomingPacketHandleMode {
-        QUEUE,
-        HANDLER
-    }
 
     private final int port;
     private final int receiverThreadsNumber;
@@ -36,6 +31,8 @@ public final class PigeonTcpServer extends Thread implements PigeonServer, Obser
     private final ExecutorService executorService;
     private final IncomingPacketHandleMode incomingPacketHandleMode;
     private final IncomingPacketQueue incomingPacketQueue;
+    private final PacketHandler packetHandler;
+    private final ServerCallbackHandler serverCallbackHandler;
 
     private boolean exit;
 
@@ -43,10 +40,13 @@ public final class PigeonTcpServer extends Thread implements PigeonServer, Obser
         this.port = builder.getPort();
         this.receiverThreadsNumber = builder.getReceiverThreadsNumber();
         this.incomingPacketHandleMode = builder.getIncomingPacketHandleMode();
+        this.serverCallbackHandler = builder.getServerCallbackHandler();
 
         if (incomingPacketHandleMode == IncomingPacketHandleMode.QUEUE) {
+            packetHandler = null;
             incomingPacketQueue = new IncomingPacketQueue();
-        } else {
+        } else {    // HANDLER mode is the default mode
+            packetHandler = builder.getPacketHandler();
             incomingPacketQueue = null;
         }
 
@@ -65,6 +65,9 @@ public final class PigeonTcpServer extends Thread implements PigeonServer, Obser
 
     @Override
     public void run() {
+        if (serverCallbackHandler != null)
+            serverCallbackHandler.onStarted();
+
         try {
             while (!exit) {
                 Socket clientSocket = null;
@@ -82,19 +85,22 @@ public final class PigeonTcpServer extends Thread implements PigeonServer, Obser
                 if (fixedNumberOfThreads()) {
                     ThreadPoolExecutor tpc = (ThreadPoolExecutor) executorService;
                     if (tpc.getActiveCount() >= receiverThreadsNumber) {
-                        log.info("Connection from IP "+clientSocket.getInetAddress().getHostAddress()+" was declined due to not enough threads to handle it.");
+                        log.info("Connection from IP " + clientSocket.getInetAddress().getHostAddress() + " was declined due to not enough threads to handle it.");
                         continue;
                     }
                 }
 
                 UUID uuid = UUID.randomUUID();
-                Connection connection = new Connection(uuid, serverSocket, clientSocket, incomingPacketHandleMode, incomingPacketQueue);
+                Connection connection = new Connection(uuid, clientSocket);
                 if (connection.isOk()) {    // Connection is not considered ok when there is an IOException in the constructor
                     connection.attach(this);
                     connections.put(uuid, connection);
                     log.info(String.format("Accepted a new connection [%s] from IP: %s", uuid, clientSocket.getInetAddress().getHostAddress()));
 
                     executorService.execute(connection);
+
+                    if (serverCallbackHandler != null)
+                        serverCallbackHandler.onNewConnection(connection);
                 }
             }
         } catch (IOException e) {
@@ -109,17 +115,46 @@ public final class PigeonTcpServer extends Thread implements PigeonServer, Obser
         }
     }
 
+    @Override
     public void update(Observable observable, Message message, Object payload) {
         switch (message) {
             case DISCONNECTED:
                 UUID connectionUuid = (UUID) payload;
                 Connection connection = connections.get(connectionUuid);
                 connections.remove(connectionUuid);
-                log.debug("Removed connection ["+connectionUuid+"] from ["+connection.getHost()+"]");
-                log.debug("Remaining connections: "+connections.entrySet().size());
+                log.debug("Removed connection [" + connectionUuid + "] from [" + connection.getHost() + "]");
+                log.debug("Remaining connections: " + connections.entrySet().size());
                 connection.disconnect();
                 break;
+            case RECEIVED_PACKET:
+                Packet packet = (Packet) payload;
+                switch (incomingPacketHandleMode) {
+                    case QUEUE:
+                        incomingPacketQueue.push(packet);
+                        break;
+                    default:
+                    case HANDLER:
+                        packetHandler.handle(packet);
+                        break;
+                }
+                break;
         }
+    }
+
+    @Override
+    public void send(Packet packet, Connection connection) {
+        connection.send(packet);
+    }
+
+    @Override
+    public void send(Packet packet, List<Connection> connections) {
+        for (Connection connection : connections) {
+            send(packet, connection);
+        }
+    }
+
+    public IncomingPacketQueue getIncomingPacketQueue() {
+        return incomingPacketQueue;
     }
 
     private boolean fixedNumberOfThreads() {

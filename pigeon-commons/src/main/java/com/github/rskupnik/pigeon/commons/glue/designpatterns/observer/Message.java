@@ -1,5 +1,6 @@
 package com.github.rskupnik.pigeon.commons.glue.designpatterns.observer;
 
 public enum Message {
-    DISCONNECTED;
+    DISCONNECTED,
+    RECEIVED_PACKET;
 }

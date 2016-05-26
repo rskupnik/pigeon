@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.tcpserver.networking;
+package com.github.rskupnik.pigeon.commons;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

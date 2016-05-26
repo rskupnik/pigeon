@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.tcpserver.networking;
+package com.github.rskupnik.pigeon.commons;
 
 import com.github.rskupnik.pigeon.commons.annotations.AnnotationsScanner;
 import com.github.rskupnik.pigeon.commons.annotations.FieldBlueprint;

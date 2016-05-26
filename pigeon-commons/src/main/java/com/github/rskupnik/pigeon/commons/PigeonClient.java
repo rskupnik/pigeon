@@ -1,4 +1,6 @@
 package com.github.rskupnik.pigeon.commons;
 
-public interface PigeonClient {
+import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observer;
+
+public interface PigeonClient extends Observer {
 }

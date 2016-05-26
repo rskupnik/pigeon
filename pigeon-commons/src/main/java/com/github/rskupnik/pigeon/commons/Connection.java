@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.tcpserver.networking;
+package com.github.rskupnik.pigeon.commons;
 
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Message;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observable;
@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -18,29 +17,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-final class Connection implements Runnable, Observable {
+public final class Connection extends Thread implements Runnable, Observable {
 
     private static final Logger log = LogManager.getLogger(Connection.class);
 
     private final UUID uuid;
-    private final ServerSocket serverSocket;
     private Socket clientSocket;
     private DataInputStream clientInputStream;
     private DataOutputStream clientOutputStream;
     private List<Observer> observers = new ArrayList<Observer>();
-    private final PigeonTcpServer.IncomingPacketHandleMode incomingPacketHandleMode;
-    private final IncomingPacketQueue incomingPacketQueue;
 
     private boolean exit;
     private boolean ok = true;
 
-    protected Connection(UUID uuid, ServerSocket serverSocket, Socket clientSocket,
-                         PigeonTcpServer.IncomingPacketHandleMode incomingPacketHandleMode, IncomingPacketQueue incomingPacketQueue) {
+    public Connection(UUID uuid, Socket clientSocket) {
         this.uuid = uuid;
-        this.serverSocket = serverSocket;
         this.clientSocket = clientSocket;
-        this.incomingPacketHandleMode = incomingPacketHandleMode;
-        this.incomingPacketQueue = incomingPacketQueue;
 
         try {
             clientSocket.setSoTimeout(200);     // TODO: Make sure using socket timeouts is good and find out what value is optimal
@@ -69,6 +61,7 @@ final class Connection implements Runnable, Observable {
                     continue;
                 }
 
+                // Decode the packet
                 log.trace("Received a packet, ID: " + packetId);
                 Optional<Object> packet = PacketFactory.incomingPacket(packetId, clientInputStream);
                 if (packet.isPresent()) {
@@ -80,14 +73,8 @@ final class Connection implements Runnable, Observable {
                         continue;
                     }
 
-                    switch (incomingPacketHandleMode) {
-                        default:
-                        case QUEUE:
-                            incomingPacketQueue.push(unwrappedPacket);
-                            break;
-                        case HANDLER:
-                            break;
-                    }
+                    // Let the server handle the packet
+                    notify(Message.RECEIVED_PACKET, unwrappedPacket);
                 } else {
                     // TODO: Handle a packet parsing exception
                 }
@@ -115,7 +102,7 @@ final class Connection implements Runnable, Observable {
         observers.add(observer);
     }
 
-    void send(Packet packet) {
+    public void send(Packet packet) {
         try {
             packet.send(clientOutputStream);
         } catch (IOException e) {
@@ -123,7 +110,7 @@ final class Connection implements Runnable, Observable {
         }
     }
 
-    void disconnect() {
+    public void disconnect() {
         exit = true;
         if (clientSocket != null) {
             try {
