@@ -1,9 +1,8 @@
 package com.github.rskupnik.pigeon.tcpclient;
 
-import com.github.rskupnik.pigeon.commons.IncomingPacketHandleMode;
-import com.github.rskupnik.pigeon.commons.PacketHandler;
-import com.github.rskupnik.pigeon.commons.PigeonClient;
-import com.github.rskupnik.pigeon.commons.PigeonClientBuilder;
+import com.github.rskupnik.pigeon.commons.*;
+import com.github.rskupnik.pigeon.commons.callback.ClientCallbackHandler;
+import com.github.rskupnik.pigeon.commons.client.PigeonClientBuilder;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
 
 public class PigeonTcpClientBuilder implements PigeonClientBuilder {
@@ -12,6 +11,7 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
     private int port;
     private IncomingPacketHandleMode incomingPacketHandleMode;
     private PacketHandler packetHandler;
+    private ClientCallbackHandler clientCallbackHandler;
 
     public PigeonTcpClientBuilder withHost(String host) {
         this.host = host;
@@ -33,6 +33,11 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
         return this;
     }
 
+    public PigeonTcpClientBuilder withClientCallbackHandler(ClientCallbackHandler clientCallbackHandler) {
+        this.clientCallbackHandler = clientCallbackHandler;
+        return this;
+    }
+
     public String getHost() {
         return host;
     }
@@ -47,6 +52,10 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
 
     public PacketHandler getPacketHandler() {
         return packetHandler;
+    }
+
+    public ClientCallbackHandler getClientCallbackHandler() {
+        return clientCallbackHandler;
     }
 
     public PigeonTcpClient build() throws PigeonException {

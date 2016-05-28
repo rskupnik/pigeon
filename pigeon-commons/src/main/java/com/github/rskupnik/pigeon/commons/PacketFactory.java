@@ -17,12 +17,13 @@ public class PacketFactory {
 
     private static final Logger log = LogManager.getLogger(PacketFactory.class);
 
+    // TODO: Extract common code from here and Connection/AnnotationsScanner to a separate class
     // TODO: Optimize this - store constructor and methods in the blueprint so this method only has to instantiate and call the methods
     static Optional<Object> incomingPacket(int id, DataInputStream inputStream) {
         try {
             IncomingPacketBlueprint packetBlueprint = AnnotationsScanner.getInstance().getIncomingPacketBlueprint(id);
             Class<?> packetClass = packetBlueprint.getPacketClass();
-            log.trace("Packet class is: "+packetClass);
+            log.trace("PigeonPacket class is: "+packetClass);
             Constructor[] constructors = packetClass.getDeclaredConstructors();
             Constructor chosenConstructor = null;
             for (Constructor constructor : constructors) {
@@ -32,6 +33,10 @@ public class PacketFactory {
                     break;
                 }
             }
+            if (chosenConstructor == null) {
+                log.error("No-args constructor not found for class "+packetClass);
+                return Optional.empty();
+            }
             chosenConstructor.setAccessible(true);
             Object packet = chosenConstructor.newInstance();
             for (FieldBlueprint field : packetBlueprint.getFields()) {
@@ -40,11 +45,11 @@ public class PacketFactory {
                 name.append(field.getFieldName().substring(1));
                 Method[] methods = packetClass.getDeclaredMethods();
                 Method chosenMethod = null;
-                for (Method method : methods) {
+                inner: for (Method method : methods) {
                     log.trace("Found method: "+method);
                     if (method.getName().equals("set"+name)) {
                         chosenMethod = method;
-                        break;
+                        break inner;
                     }
                 }
                 Object value = getValue(inputStream, field.getFieldType());
@@ -60,7 +65,7 @@ public class PacketFactory {
     }
 
     static Object getValue(DataInputStream inputStream, Class fieldType) throws IOException {
-        if (fieldType.isInstance(Integer.class)) {
+        if (fieldType.equals(Integer.TYPE) || fieldType.isInstance(Integer.class)) {
             return inputStream.readInt();
         } else if (fieldType.isInstance(String.class)) {
             return inputStream.readUTF();

@@ -1,5 +1,8 @@
 package com.github.rskupnik.pigeon.commons;
 
+import com.github.rskupnik.pigeon.commons.annotations.PacketDataField;
+import com.github.rskupnik.pigeon.commons.annotations.PigeonPacket;
+import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Message;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observable;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observer;
@@ -9,6 +12,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -61,6 +67,10 @@ public final class Connection extends Thread implements Runnable, Observable {
                     continue;
                 }
 
+                if (packetId == 0) {    // This ID is used to determine connection state when connecting
+                    continue;
+                }
+
                 // Decode the packet
                 log.trace("Received a packet, ID: " + packetId);
                 Optional<Object> packet = PacketFactory.incomingPacket(packetId, clientInputStream);
@@ -69,7 +79,7 @@ public final class Connection extends Thread implements Runnable, Observable {
                     try {
                         unwrappedPacket = (Packet) packet.get();
                     } catch (ClassCastException e) {
-                        log.error(String.format("Packet of ID %d has an invalid class: %s", packetId, e.getMessage()));
+                        log.error(String.format("PigeonPacket of ID %d has an invalid class: %s", packetId, e.getMessage()));
                         continue;
                     }
 
@@ -85,8 +95,10 @@ public final class Connection extends Thread implements Runnable, Observable {
             notify(Message.DISCONNECTED, uuid);
         } finally {
             try {
-                clientSocket.close();
-                clientSocket = null;
+                if (clientSocket != null) {
+                    clientSocket.close();
+                    clientSocket = null;
+                }
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
             }
@@ -95,16 +107,22 @@ public final class Connection extends Thread implements Runnable, Observable {
 
     public void notify(Message message, Object payload) {
         log.trace("Sending a message of type " + message + " with payload: " + payload);
-        observers.forEach(observer -> observer.update(this, message, payload));
+        //observers.forEach(observer -> observer.update(this, message, payload));
+        for (Observer observer : observers) {
+            observer.update(this, message, payload);
+        }
     }
 
     public void attach(Observer observer) {
         observers.add(observer);
     }
 
-    public void send(Packet packet) {
+    public void send(Packet packet) throws PigeonException {
+        inject(packet);
+
         try {
             packet.send(clientOutputStream);
+            sendData(packet);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
         }
@@ -115,8 +133,61 @@ public final class Connection extends Thread implements Runnable, Observable {
         if (clientSocket != null) {
             try {
                 clientSocket.close();
+                clientSocket = null;
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void inject(Packet packet) throws PigeonException {
+        // Inject the id from annotation
+        PigeonPacket annotation = packet.getClass().getAnnotation(PigeonPacket.class);
+        if (annotation == null) {
+            throw new PigeonException("Failed to send packet - it's not annotated with @PigeonPacket!");
+        }
+        packet.setId(annotation.id());
+    }
+
+    // TODO: Make sure this is optimized
+    // TODO: Extract duplicate code from here and PacketFactory/AnnotationsScanner into a separate class
+    private void sendData(Packet packet) throws PigeonException {
+        for (Field field : packet.getClass().getDeclaredFields()) {
+            if (field.getAnnotation(PacketDataField.class) == null)
+                continue;
+
+            StringBuilder name = new StringBuilder();
+            name.append(field.getName().substring(0, 1).toUpperCase());
+            name.append(field.getName().substring(1));
+            Method[] methods = packet.getClass().getDeclaredMethods();
+            Method chosenMethod = null;
+            inner: for (Method method : methods) {
+                if (method.getName().equals("get"+name)) {
+                    chosenMethod = method;
+                    break inner;
+                }
+            }
+            chosenMethod.setAccessible(true);
+            Object value = null;
+            try {
+                value = chosenMethod.invoke(packet);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new PigeonException(e.getMessage());
+            }
+            if (value == null) {
+                throw new PigeonException("Cannot retrieve value of field "+field.getName());
+            }
+
+            try {
+                if (field.getType().equals(Integer.TYPE) || field.getType().isInstance(Integer.class)) {
+                    clientOutputStream.writeInt((int) value);
+                } else if (field.getType().isInstance(String.class)) {
+                    clientOutputStream.writeUTF((String) value);
+                } else {
+                    throw new PigeonException("Cannot handle this data type: "+field.getType());
+                }
+            } catch (IOException e) {
+                throw new PigeonException(e.getMessage());
             }
         }
     }
@@ -126,6 +197,9 @@ public final class Connection extends Thread implements Runnable, Observable {
     }
 
     public String getHost() {
+        if (clientSocket == null || clientSocket.getInetAddress() == null)
+            return null;
+
         return clientSocket.getInetAddress().getHostAddress();
     }
 

@@ -1,11 +1,10 @@
-package com.github.rskupnik.pigeon.tcpserver.init;
+package com.github.rskupnik.pigeon.tcpserver;
 
 import com.github.rskupnik.pigeon.commons.IncomingPacketHandleMode;
 import com.github.rskupnik.pigeon.commons.PacketHandler;
-import com.github.rskupnik.pigeon.commons.PigeonServerBuilder;
-import com.github.rskupnik.pigeon.commons.ServerCallbackHandler;
+import com.github.rskupnik.pigeon.commons.server.PigeonServerBuilder;
+import com.github.rskupnik.pigeon.commons.callback.ServerCallbackHandler;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonServerException;
-import com.github.rskupnik.pigeon.tcpserver.networking.PigeonTcpServer;
 
 public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
 

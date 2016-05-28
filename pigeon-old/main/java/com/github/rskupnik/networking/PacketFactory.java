@@ -23,7 +23,7 @@ public class PacketFactory {
         try {
             IncomingPacketBlueprint packetBlueprint = AnnotationsScanner.getInstance().getIncomingPacketBlueprint(id);
             Class<?> packetClass = packetBlueprint.getPacketClass();
-            log.trace("Packet class is: "+packetClass);
+            log.trace("PigeonPacket class is: "+packetClass);
             Constructor[] constructors = packetClass.getDeclaredConstructors();
             Constructor chosenConstructor = null;
             for (Constructor constructor : constructors) {

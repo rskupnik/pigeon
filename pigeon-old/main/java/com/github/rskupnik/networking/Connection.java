@@ -77,7 +77,7 @@ final class Connection implements Runnable, Observable {
                     try {
                         unwrappedPacket = (Packet) packet.get();
                     } catch (ClassCastException e) {
-                        log.error(String.format("Packet of ID %d has an invalid class: %s", packetId, e.getMessage()));
+                        log.error(String.format("PigeonPacket of ID %d has an invalid class: %s", packetId, e.getMessage()));
                         continue;
                     }
 

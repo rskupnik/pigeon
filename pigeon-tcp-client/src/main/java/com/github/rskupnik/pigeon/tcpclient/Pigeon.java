@@ -1,11 +1,10 @@
 package com.github.rskupnik.pigeon.tcpclient;
 
-import com.github.rskupnik.pigeon.commons.PigeonClientBuilder;
-import com.github.rskupnik.pigeon.commons.PigeonServerBuilder;
+import com.github.rskupnik.pigeon.commons.client.PigeonClientBuilder;
 
 public final class Pigeon {
 
-    public static PigeonClientBuilder newClient() {
-        return null;
+    public static PigeonTcpClientBuilder newClient() {
+        return new PigeonTcpClientBuilder();
     }
 }

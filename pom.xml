@@ -37,6 +37,16 @@
           <artifactId>pigeon-commons</artifactId>
           <version>${commons-version}</version>
       </dependency>
+      <dependency>
+          <groupId>com.github.rskupnik</groupId>
+          <artifactId>pigeon-tcp-server</artifactId>
+          <version>${commons-version}</version>
+      </dependency>
+      <dependency>
+          <groupId>com.github.rskupnik</groupId>
+          <artifactId>pigeon-tcp-client</artifactId>
+          <version>${commons-version}</version>
+      </dependency>
     <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>

@@ -32,14 +32,14 @@ public class AnnotationsScanner {
 
     public void scan() {
         log.debug("Scanning for annotated classes...");
-        // Find all classes annotated as IncomingPacket
+        // Find all classes annotated as PigeonPacket
         // TODO: Allow the user to set a path to be scanned for annotated classes
         Set<Class<?>> annotatedClasses = new Reflections().getTypesAnnotatedWith(IncomingPacket.class);
         for (Class<?> annotatedClass : annotatedClasses) {
             IncomingPacket classAnnotation = annotatedClass.getAnnotation(IncomingPacket.class);
             Integer id = classAnnotation.id();
             if (incomingPacketBlueprints.containsKey(id)) {
-                log.warn(String.format("There is already an IncomingPacket registered with id %d, cannot register %s", id, annotatedClass.getName()));
+                log.warn(String.format("There is already an PigeonPacket registered with id %d, cannot register %s", id, annotatedClass.getName()));
                 continue;
             }
 

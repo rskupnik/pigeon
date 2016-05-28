@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.commons;
+package com.github.rskupnik.pigeon.commons.server;
 
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonServerException;
 

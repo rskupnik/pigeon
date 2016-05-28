@@ -1,10 +1,13 @@
-package com.github.rskupnik.pigeon.tcpserver.networking;
+package com.github.rskupnik.pigeon.tcpserver;
 
 import com.github.rskupnik.pigeon.commons.*;
+import com.github.rskupnik.pigeon.commons.annotations.AnnotationsScanner;
+import com.github.rskupnik.pigeon.commons.callback.ServerCallbackHandler;
+import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonServerException;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Message;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observable;
-import com.github.rskupnik.pigeon.tcpserver.init.PigeonTcpServerBuilder;
+import com.github.rskupnik.pigeon.commons.server.PigeonServer;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -50,6 +53,8 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
             incomingPacketQueue = null;
         }
 
+        AnnotationsScanner.getInstance().scan();
+
         try {
             this.serverSocket = new ServerSocket(port);
         } catch (IOException e) {
@@ -85,6 +90,7 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
                 if (fixedNumberOfThreads()) {
                     ThreadPoolExecutor tpc = (ThreadPoolExecutor) executorService;
                     if (tpc.getActiveCount() >= receiverThreadsNumber) {
+                        clientSocket.getOutputStream().write(0);    // Indicate to the client that connection was refused
                         log.info("Connection from IP " + clientSocket.getInetAddress().getHostAddress() + " was declined due to not enough threads to handle it.");
                         continue;
                     }
@@ -98,6 +104,8 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
                     log.info(String.format("Accepted a new connection [%s] from IP: %s", uuid, clientSocket.getInetAddress().getHostAddress()));
 
                     executorService.execute(connection);
+
+                    clientSocket.getOutputStream().write(1);    // Indicate to the client the connection was accepted
 
                     if (serverCallbackHandler != null)
                         serverCallbackHandler.onNewConnection(connection);
@@ -115,16 +123,17 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
         }
     }
 
-    @Override
     public void update(Observable observable, Message message, Object payload) {
         switch (message) {
             case DISCONNECTED:
                 UUID connectionUuid = (UUID) payload;
                 Connection connection = connections.get(connectionUuid);
-                connections.remove(connectionUuid);
-                log.debug("Removed connection [" + connectionUuid + "] from [" + connection.getHost() + "]");
-                log.debug("Remaining connections: " + connections.entrySet().size());
-                connection.disconnect();
+                if (connection != null) {
+                    connections.remove(connectionUuid);
+                    log.debug("Removed connection [" + connectionUuid + "] from [" + (connection.getHost() != null ? connection.getHost() : "unknown") + "]");
+                    log.debug("Remaining connections: " + connections.entrySet().size());
+                    connection.disconnect();
+                }
                 break;
             case RECEIVED_PACKET:
                 Packet packet = (Packet) payload;
@@ -141,15 +150,26 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
         }
     }
 
-    @Override
-    public void send(Packet packet, Connection connection) {
+    public void send(Packet packet, Connection connection) throws PigeonException {
         connection.send(packet);
     }
 
-    @Override
-    public void send(Packet packet, List<Connection> connections) {
+    public void send(Packet packet, List<Connection> connections) throws PigeonException {
         for (Connection connection : connections) {
             send(packet, connection);
+        }
+    }
+
+    public void shutdown() {
+        try {
+            for (Connection connection : connections.values()) {
+                connection.disconnect();
+            }
+            serverSocket.close();
+            executorService.shutdown();
+            exit = true;
+        } catch (IOException e) {
+            log.error(e.getMessage(), e);
         }
     }
 

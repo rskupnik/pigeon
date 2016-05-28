@@ -1,4 +1,4 @@
-package com.github.rskupnik.pigeon.tcpserver.init;
+package com.github.rskupnik.pigeon.tcpserver;
 
 public final class Pigeon {
 
