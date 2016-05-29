@@ -40,6 +40,7 @@ public class TcpIntegrationTests {
 
     private PigeonTcpServer server;
     private List<PigeonTcpClient> clients = new ArrayList<>();
+    private List<Connection> connections = new ArrayList<>();
 
     @Before
     public void before() {
@@ -151,6 +152,38 @@ public class TcpIntegrationTests {
         verify(packetHandler, times(1)).handle(any(Packet.class));
     }
 
+    @Test
+    public void shouldReceivePacketClientSide() throws PigeonException {
+        server = com.github.rskupnik.pigeon.tcpserver.Pigeon.newServer()
+                .withPort(PORT)
+                .withPacketHandler(packetHandler)
+                .withServerCallbackHandler(new TestServerCallbackHandler())
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
+                .withReceiverThreadsNumber(1)
+                .build();
+        server.start();
+
+        PigeonTcpClient client = com.github.rskupnik.pigeon.tcpclient.Pigeon.newClient()
+                .withHost("localhost")
+                .withPort(PORT)
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
+                .withPacketHandler(packetHandler)
+                .withClientCallbackHandler(clientCallbackHandler)
+                .build();
+
+        clients.add(client);
+
+        server.send(new TestPacket(), connections.get(0));
+
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        verify(packetHandler, times(1)).handle(any(Packet.class));
+    }
+
     class TestServerCallbackHandler implements ServerCallbackHandler {
 
         @Override
@@ -160,7 +193,7 @@ public class TcpIntegrationTests {
 
         @Override
         public void onNewConnection(Connection connection) {
-
+            connections.add(connection);
         }
     }
 
