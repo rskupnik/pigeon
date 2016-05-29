@@ -20,6 +20,8 @@ public class PigeonTcpClient implements PigeonClient {
 
     private final String host;
     private final int port;
+    private final String packageToScan;
+
     private final Socket clientSocket;
     private final Connection connection;
     private final IncomingPacketHandleMode incomingPacketHandleMode;
@@ -33,6 +35,7 @@ public class PigeonTcpClient implements PigeonClient {
         this.incomingPacketHandleMode = builder.getIncomingPacketHandleMode();
         this.packetHandler = builder.getPacketHandler();
         this.clientCallbackHandler = builder.getClientCallbackHandler();
+        this.packageToScan = builder.getPackageToScan();
 
         if (incomingPacketHandleMode == IncomingPacketHandleMode.QUEUE) {
             incomingPacketQueue = new IncomingPacketQueue();
@@ -41,7 +44,7 @@ public class PigeonTcpClient implements PigeonClient {
         }
 
         // TODO: Let the user point a package to scan
-        AnnotationsScanner.getInstance().scan();
+        AnnotationsScanner.getInstance().scan(packageToScan);
 
         try {
             clientSocket = new Socket(host, port);

@@ -28,6 +28,7 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
 
     private final int port;
     private final int receiverThreadsNumber;
+    private final String packageToScan;
 
     private final ServerSocket serverSocket;
     private final Map<UUID, Connection> connections = new HashMap<UUID, Connection>();
@@ -44,6 +45,7 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
         this.receiverThreadsNumber = builder.getReceiverThreadsNumber();
         this.incomingPacketHandleMode = builder.getIncomingPacketHandleMode();
         this.serverCallbackHandler = builder.getServerCallbackHandler();
+        this.packageToScan = builder.getPackageToScan();
 
         if (incomingPacketHandleMode == IncomingPacketHandleMode.QUEUE) {
             packetHandler = null;
@@ -54,7 +56,7 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
         }
 
         // TODO: Let the user point a package to scan
-        AnnotationsScanner.getInstance().scan();
+        AnnotationsScanner.getInstance().scan(packageToScan);
 
         try {
             this.serverSocket = new ServerSocket(port);

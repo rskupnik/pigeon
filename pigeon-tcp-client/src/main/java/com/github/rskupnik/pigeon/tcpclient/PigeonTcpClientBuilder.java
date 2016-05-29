@@ -12,6 +12,7 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
     private IncomingPacketHandleMode incomingPacketHandleMode;
     private PacketHandler packetHandler;
     private ClientCallbackHandler clientCallbackHandler;
+    private String packageToScan;
 
     public PigeonTcpClientBuilder withHost(String host) {
         this.host = host;
@@ -38,6 +39,11 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
         return this;
     }
 
+    public PigeonTcpClientBuilder withPackageToScan(String packageToScan) {
+        this.packageToScan = packageToScan;
+        return this;
+    }
+
     public String getHost() {
         return host;
     }
@@ -56,6 +62,10 @@ public class PigeonTcpClientBuilder implements PigeonClientBuilder {
 
     public ClientCallbackHandler getClientCallbackHandler() {
         return clientCallbackHandler;
+    }
+
+    public String getPackageToScan() {
+        return packageToScan;
     }
 
     public PigeonTcpClient build() throws PigeonException {

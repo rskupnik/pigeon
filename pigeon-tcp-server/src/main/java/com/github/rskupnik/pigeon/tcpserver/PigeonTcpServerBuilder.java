@@ -13,6 +13,7 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
     private IncomingPacketHandleMode incomingPacketHandleMode;
     private PacketHandler packetHandler;
     private ServerCallbackHandler serverCallbackHandler;
+    private String packageToScan;
 
     public PigeonTcpServerBuilder withPort(int port) {
         this.port = port;
@@ -39,6 +40,11 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
         return this;
     }
 
+    public PigeonTcpServerBuilder withPackageToScan(String packageToScan) {
+        this.packageToScan = packageToScan;
+        return this;
+    }
+
     public int getPort() {
         return port;
     }
@@ -57,6 +63,10 @@ public final class PigeonTcpServerBuilder implements PigeonServerBuilder {
 
     public ServerCallbackHandler getServerCallbackHandler() {
         return serverCallbackHandler;
+    }
+
+    public String getPackageToScan() {
+        return packageToScan;
     }
 
     public PigeonTcpServer build() throws PigeonServerException {

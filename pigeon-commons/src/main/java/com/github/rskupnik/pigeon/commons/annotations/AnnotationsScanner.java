@@ -32,11 +32,12 @@ public class AnnotationsScanner {
 
     }
 
-    public void scan() {
-        log.debug("Scanning for annotated classes...");
+    public void scan(String packageToScan) {
+        log.debug("Scanning for annotated classes "+(packageToScan == null ? "everywhere" : "in "+packageToScan));
 
         // TODO: Allow the user to set a path to be scanned for annotated classes
-        Set<Class<?>> annotatedClasses = new Reflections().getTypesAnnotatedWith(PigeonPacket.class);
+        Reflections reflections = packageToScan != null ? new Reflections(packageToScan) : new Reflections();
+        Set<Class<?>> annotatedClasses = reflections.getTypesAnnotatedWith(PigeonPacket.class);
         for (Class<?> annotatedClass : annotatedClasses) {
             PigeonPacket classAnnotation = annotatedClass.getAnnotation(PigeonPacket.class);
             Integer id = classAnnotation.id();

@@ -27,7 +27,10 @@ import static org.mockito.Mockito.verify;
 @RunWith(MockitoJUnitRunner.class)
 public class TcpIntegrationTests {
 
+    private static final long DELAY = 50;
     private static final int PORT = 10708;
+    private static final String PACKAGE_TO_SCAN_SERVER = "com.github.rskupnik.pigeon";
+    private static final String PACKAGE_TO_SCAN_CLIENT = "com.github.rskupnik.pigeon";
 
     @Mock
     private ServerCallbackHandler serverCallbackHandler;
@@ -63,6 +66,7 @@ public class TcpIntegrationTests {
                 .withServerCallbackHandler(serverCallbackHandler)
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withReceiverThreadsNumber(0)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
                 .build();
         server.start();
 
@@ -72,6 +76,7 @@ public class TcpIntegrationTests {
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withPacketHandler(packetHandler)
                 .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
                 .build();
 
         clients.add(client);
@@ -88,6 +93,7 @@ public class TcpIntegrationTests {
                 .withPacketHandler(packetHandler)
                 .withServerCallbackHandler(serverCallbackHandler)
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
                 .withReceiverThreadsNumber(1)
                 .build();
         server.start();
@@ -98,6 +104,7 @@ public class TcpIntegrationTests {
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withPacketHandler(packetHandler)
                 .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
                 .build();
 
         clients.add(client);
@@ -109,6 +116,7 @@ public class TcpIntegrationTests {
                     .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                     .withPacketHandler(packetHandler)
                     .withClientCallbackHandler(clientCallbackHandler)
+                    .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
                     .build();
 
             clients.add(client2);
@@ -129,6 +137,7 @@ public class TcpIntegrationTests {
                 .withServerCallbackHandler(serverCallbackHandler)
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withReceiverThreadsNumber(1)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
                 .build();
         server.start();
 
@@ -137,6 +146,7 @@ public class TcpIntegrationTests {
                 .withPort(PORT)
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.QUEUE)
                 .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
                 .build();
 
         clients.add(client);
@@ -144,7 +154,7 @@ public class TcpIntegrationTests {
         client.send(new TestPacket());
 
         try {
-            Thread.sleep(200);
+            Thread.sleep(DELAY);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -160,6 +170,7 @@ public class TcpIntegrationTests {
                 .withServerCallbackHandler(new TestServerCallbackHandler())
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withReceiverThreadsNumber(1)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
                 .build();
         server.start();
 
@@ -169,6 +180,7 @@ public class TcpIntegrationTests {
                 .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
                 .withPacketHandler(packetHandler)
                 .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
                 .build();
 
         clients.add(client);
@@ -176,12 +188,77 @@ public class TcpIntegrationTests {
         server.send(new TestPacket(), connections.get(0));
 
         try {
-            Thread.sleep(200);
+            Thread.sleep(DELAY);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
         verify(packetHandler, times(1)).handle(any(Packet.class));
+    }
+
+    @Test
+    public void shouldReceivePacketServerSideQueueMode() throws PigeonException {
+        server = com.github.rskupnik.pigeon.tcpserver.Pigeon.newServer()
+                .withPort(PORT)
+                .withServerCallbackHandler(serverCallbackHandler)
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.QUEUE)
+                .withReceiverThreadsNumber(1)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
+                .build();
+        server.start();
+
+        PigeonTcpClient client = com.github.rskupnik.pigeon.tcpclient.Pigeon.newClient()
+                .withHost("localhost")
+                .withPort(PORT)
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.QUEUE)
+                .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
+                .build();
+
+        clients.add(client);
+
+        client.send(new TestPacket());
+
+        try {
+            Thread.sleep(DELAY);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(1, server.getIncomingPacketQueue().popAll().size());
+    }
+
+    @Test
+    public void shouldReceivePacketClientSideQueueMode() throws PigeonException {
+        server = com.github.rskupnik.pigeon.tcpserver.Pigeon.newServer()
+                .withPort(PORT)
+                .withPacketHandler(packetHandler)
+                .withServerCallbackHandler(new TestServerCallbackHandler())
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.HANDLER)
+                .withReceiverThreadsNumber(1)
+                .withPackageToScan(PACKAGE_TO_SCAN_SERVER)
+                .build();
+        server.start();
+
+        PigeonTcpClient client = com.github.rskupnik.pigeon.tcpclient.Pigeon.newClient()
+                .withHost("localhost")
+                .withPort(PORT)
+                .withIncomingPacketHandleMode(IncomingPacketHandleMode.QUEUE)
+                .withClientCallbackHandler(clientCallbackHandler)
+                .withPackageToScan(PACKAGE_TO_SCAN_CLIENT)
+                .build();
+
+        clients.add(client);
+
+        server.send(new TestPacket(), connections.get(0));
+
+        try {
+            Thread.sleep(DELAY);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(1, client.getIncomingPacketQueue().popAll().size());
     }
 
     class TestServerCallbackHandler implements ServerCallbackHandler {
