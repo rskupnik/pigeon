@@ -1,6 +1,7 @@
 package com.github.rskupnik.pigeon.tcpclient;
 
 import com.github.rskupnik.pigeon.commons.*;
+import com.github.rskupnik.pigeon.commons.annotations.AnnotationsScanner;
 import com.github.rskupnik.pigeon.commons.callback.ClientCallbackHandler;
 import com.github.rskupnik.pigeon.commons.client.PigeonClient;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
@@ -38,6 +39,9 @@ public class PigeonTcpClient implements PigeonClient {
         } else {
             incomingPacketQueue = null;
         }
+
+        // TODO: Let the user point a package to scan
+        AnnotationsScanner.getInstance().scan();
 
         try {
             clientSocket = new Socket(host, port);

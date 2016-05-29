@@ -1,20 +1,29 @@
 package com.github.rskupnik.pigeon.commons.annotations;
 
-public class FieldBlueprint {
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
-    private Class fieldType;
-    private String fieldName;
+public final class FieldBlueprint {
 
-    FieldBlueprint(Class fieldType, String fieldName) {
-        this.fieldName = fieldName;
-        this.fieldType = fieldType;
+    private Field field;
+    private Method setter;
+    private Method getter;
+
+    FieldBlueprint(Field field, Method getter, Method setter) {
+        this.field = field;
+        this.getter = getter;
+        this.setter = setter;
     }
 
-    public Class getFieldType() {
-        return fieldType;
+    public Field getField() {
+        return field;
     }
 
-    public String getFieldName() {
-        return fieldName;
+    public Method getSetter() {
+        return setter;
+    }
+
+    public Method getGetter() {
+        return getter;
     }
 }

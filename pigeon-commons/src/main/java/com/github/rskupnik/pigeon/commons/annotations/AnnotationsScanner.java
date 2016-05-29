@@ -1,10 +1,14 @@
 package com.github.rskupnik.pigeon.commons.annotations;
 
+import com.github.rskupnik.pigeon.commons.Packet;
+import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
+import com.github.rskupnik.pigeon.commons.util.ReflectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +26,7 @@ public class AnnotationsScanner {
 
     private static final Logger log = LogManager.getLogger(AnnotationsScanner.class);
 
-    private final Map<Integer, IncomingPacketBlueprint> incomingPacketBlueprints = new HashMap<>();
+    private final Map<Integer, PacketBlueprint> packetBlueprints = new HashMap<>();
 
     private AnnotationsScanner() {
 
@@ -30,35 +34,74 @@ public class AnnotationsScanner {
 
     public void scan() {
         log.debug("Scanning for annotated classes...");
-        // Find all classes annotated as PigeonPacket
-        // TODO: Extract common code from here and Connection/PacketFactory to a separate class
+
         // TODO: Allow the user to set a path to be scanned for annotated classes
         Set<Class<?>> annotatedClasses = new Reflections().getTypesAnnotatedWith(PigeonPacket.class);
         for (Class<?> annotatedClass : annotatedClasses) {
             PigeonPacket classAnnotation = annotatedClass.getAnnotation(PigeonPacket.class);
             Integer id = classAnnotation.id();
-            if (incomingPacketBlueprints.containsKey(id)) {
-                log.warn(String.format("There is already an PigeonPacket registered with id %d, cannot register %s", id, annotatedClass.getName()));
+            if (packetBlueprints.containsKey(id)) {
+                log.warn(String.format("There is already a PigeonPacket registered with id %d, cannot register %s", id, annotatedClass.getName()));
                 continue;
             }
 
-            IncomingPacketBlueprint blueprint = new IncomingPacketBlueprint(id, annotatedClass);
-            for (Field field : annotatedClass.getDeclaredFields()) {
-                if (field.getAnnotation(PacketDataField.class) == null)
-                    continue;
-                FieldBlueprint fieldBlueprint = new FieldBlueprint(field.getType(), field.getName());
-                blueprint.addField(fieldBlueprint);
+            try {
+                final Class<? extends Packet> clazz;
+                try {
+                    clazz = (Class<? extends Packet>) annotatedClass;
+                } catch (ClassCastException e) {
+                    throw new PigeonException("This class is annotated with @PigeonPacket but does not extend Packet - "+annotatedClass.getName());
+                }
+
+                Constructor defaultConstructor = ReflectionUtils.findDefaultConstructor(clazz)
+                        .orElseThrow(() -> new PigeonException(
+                                String.format("Cannot find default constructor in class [%s]",
+                                        annotatedClass
+                                )
+                        )
+                );
+
+                PacketBlueprint blueprint = new PacketBlueprint(id, clazz, defaultConstructor);
+
+                ReflectionUtils.getDataFields(clazz)
+                        .forEach(field -> {
+                            try {
+                                Method getter = ReflectionUtils.findGetter(clazz, field)
+                                        .orElseThrow(() -> new PigeonException(
+                                                        String.format("Cannot find getter for field [%s] in class [%s]",
+                                                                field.getName(),
+                                                                annotatedClass.getName()
+                                                        )
+                                                )
+                                        );
+                                Method setter = ReflectionUtils.findSetter(clazz, field)
+                                        .orElseThrow(() -> new PigeonException(
+                                                        String.format("Cannot find setter for field [%s] in class [%s]",
+                                                                field.getName(),
+                                                                annotatedClass.getName()
+                                                        )
+                                                )
+                                        );
+                                blueprint.addField(new FieldBlueprint(field, getter, setter));
+                            } catch (PigeonException e) {
+                                log.error(e.getMessage(), e);
+                            }
+                        }
+                );
+
+                packetBlueprints.put(id, blueprint);
+                log.debug(String.format("Added a new annotated class [%s] with id [%d] and [%d] data fields.", annotatedClass.getName(), id, blueprint.getFields().size()));
+            } catch (PigeonException e) {
+                log.error(e.getMessage(), e);
             }
-            incomingPacketBlueprints.put(id, blueprint);
-            log.debug(String.format("Added a new annotated class %s with id %d and %d annotated fields.", annotatedClass.getName(), id, blueprint.getFields().size()));
         }
     }
 
-    public Map<Integer, IncomingPacketBlueprint> getIncomingPacketBlueprints() {
-        return incomingPacketBlueprints;
+    public Map<Integer, PacketBlueprint> getPacketBlueprints() {
+        return packetBlueprints;
     }
 
-    public IncomingPacketBlueprint getIncomingPacketBlueprint(int id) {
-        return getIncomingPacketBlueprints().get(id);
+    public PacketBlueprint getPacketBlueprint(int id) {
+        return getPacketBlueprints().get(id);
     }
 }

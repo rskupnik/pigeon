@@ -1,20 +1,20 @@
 package com.github.rskupnik.pigeon.commons;
 
-import com.github.rskupnik.pigeon.commons.annotations.PacketDataField;
+import com.github.rskupnik.pigeon.commons.annotations.AnnotationsScanner;
+import com.github.rskupnik.pigeon.commons.annotations.PacketBlueprint;
 import com.github.rskupnik.pigeon.commons.annotations.PigeonPacket;
 import com.github.rskupnik.pigeon.commons.exceptions.PigeonException;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Message;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observable;
 import com.github.rskupnik.pigeon.commons.glue.designpatterns.observer.Observer;
+import com.github.rskupnik.pigeon.commons.util.DataTypeDecoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -93,6 +93,8 @@ public final class Connection extends Thread implements Runnable, Observable {
             if (!(e instanceof SocketException))
                 log.error(e.getMessage(), e);
             notify(Message.DISCONNECTED, uuid);
+        } catch (PigeonException e) {
+            log.error(e.getMessage(), e);
         } finally {
             try {
                 if (clientSocket != null) {
@@ -107,10 +109,7 @@ public final class Connection extends Thread implements Runnable, Observable {
 
     public void notify(Message message, Object payload) {
         log.trace("Sending a message of type " + message + " with payload: " + payload);
-        //observers.forEach(observer -> observer.update(this, message, payload));
-        for (Observer observer : observers) {
-            observer.update(this, message, payload);
-        }
+        observers.forEach(observer -> observer.update(this, message, payload));
     }
 
     public void attach(Observer observer) {
@@ -118,7 +117,7 @@ public final class Connection extends Thread implements Runnable, Observable {
     }
 
     public void send(Packet packet) throws PigeonException {
-        inject(packet);
+        injectId(packet);
 
         try {
             packet.send(clientOutputStream);
@@ -140,7 +139,7 @@ public final class Connection extends Thread implements Runnable, Observable {
         }
     }
 
-    private void inject(Packet packet) throws PigeonException {
+    private void injectId(Packet packet) throws PigeonException {
         // Inject the id from annotation
         PigeonPacket annotation = packet.getClass().getAnnotation(PigeonPacket.class);
         if (annotation == null) {
@@ -149,47 +148,31 @@ public final class Connection extends Thread implements Runnable, Observable {
         packet.setId(annotation.id());
     }
 
-    // TODO: Make sure this is optimized
-    // TODO: Extract duplicate code from here and PacketFactory/AnnotationsScanner into a separate class
+    // TODO: Possible optimization - use blueprints?
     private void sendData(Packet packet) throws PigeonException {
-        for (Field field : packet.getClass().getDeclaredFields()) {
-            if (field.getAnnotation(PacketDataField.class) == null)
-                continue;
+        PacketBlueprint blueprint = AnnotationsScanner.getInstance().getPacketBlueprint(packet.getId());
 
-            StringBuilder name = new StringBuilder();
-            name.append(field.getName().substring(0, 1).toUpperCase());
-            name.append(field.getName().substring(1));
-            Method[] methods = packet.getClass().getDeclaredMethods();
-            Method chosenMethod = null;
-            inner: for (Method method : methods) {
-                if (method.getName().equals("get"+name)) {
-                    chosenMethod = method;
-                    break inner;
-                }
-            }
-            chosenMethod.setAccessible(true);
-            Object value = null;
-            try {
-                value = chosenMethod.invoke(packet);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new PigeonException(e.getMessage());
-            }
-            if (value == null) {
-                throw new PigeonException("Cannot retrieve value of field "+field.getName());
-            }
+        blueprint.getFields()
+                .forEach(fieldBlueprint -> {
+                    try {
+                        if (fieldBlueprint.getGetter() == null)
+                            throw new PigeonException(String.format("Cannot find getter for field [%s] in class [%s]", fieldBlueprint.getField().getName(), blueprint.getClass().getName()));
 
-            try {
-                if (field.getType().equals(Integer.TYPE) || field.getType().isInstance(Integer.class)) {
-                    clientOutputStream.writeInt((int) value);
-                } else if (field.getType().isInstance(String.class)) {
-                    clientOutputStream.writeUTF((String) value);
-                } else {
-                    throw new PigeonException("Cannot handle this data type: "+field.getType());
-                }
-            } catch (IOException e) {
-                throw new PigeonException(e.getMessage());
-            }
-        }
+                        Object value = null;
+                        try {
+                            value = fieldBlueprint.getGetter().invoke(packet);
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            throw new PigeonException(e.getMessage());
+                        }
+
+                        if (value == null)
+                            throw new PigeonException("Cannot retrieve value of field "+fieldBlueprint.getField().getName());
+
+                        DataTypeDecoder.write(clientOutputStream, value, fieldBlueprint.getField());
+                    } catch (PigeonException e) {
+                        log.error(e.getMessage(), e);
+                    }
+                });
     }
 
     public boolean isOk() {

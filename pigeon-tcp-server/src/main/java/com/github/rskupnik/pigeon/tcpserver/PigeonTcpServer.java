@@ -53,6 +53,7 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
             incomingPacketQueue = null;
         }
 
+        // TODO: Let the user point a package to scan
         AnnotationsScanner.getInstance().scan();
 
         try {
@@ -172,6 +173,8 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
             log.error(e.getMessage(), e);
         }
     }
+
+
 
     public IncomingPacketQueue getIncomingPacketQueue() {
         return incomingPacketQueue;
