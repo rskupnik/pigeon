@@ -15,8 +15,6 @@
   
   <modules>
 	<module>pigeon-commons</module>
-	<module>pigeon-server</module>
-	<module>pigeon-client</module>
 	<module>pigeon-tcp-server</module>
 	<module>pigeon-udp-server</module>
 	<module>pigeon-tcp-client</module>
@@ -24,11 +22,14 @@
   </modules>
 
   <repositories>
-    <repository>
-      <id>git-rskupnik</id>
-      <name>rskupnik's Git based repo</name>
-      <url>https://github.com/rskupnik/maven-repo/raw/master/</url>
-    </repository>
+      <repository>
+          <snapshots>
+              <enabled>false</enabled>
+          </snapshots>
+          <id>bintray-rskupnik-maven</id>
+          <name>bintray</name>
+          <url>http://dl.bintray.com/rskupnik/maven</url>
+      </repository>
   </repositories>
 
   <dependencies>
@@ -58,9 +59,9 @@
         <version>2.0.44-beta</version>
     </dependency>
     <dependency>
-        <groupId>com.github.rskupnik</groupId>
-        <artifactId>parrot</artifactId>
-        <version>1.2</version>
+      <groupId>com.github.rskupnik</groupId>
+      <artifactId>parrot</artifactId>
+      <version>2.0</version>
     </dependency>
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>

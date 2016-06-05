@@ -55,7 +55,6 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
             incomingPacketQueue = null;
         }
 
-        // TODO: Let the user point a package to scan
         AnnotationsScanner.getInstance().scan(packageToScan);
 
         try {
@@ -180,6 +179,30 @@ public final class PigeonTcpServer extends Thread implements PigeonServer {
 
     public IncomingPacketQueue getIncomingPacketQueue() {
         return incomingPacketQueue;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public int getReceiverThreadsNumber() {
+        return receiverThreadsNumber;
+    }
+
+    public String getPackageToScan() {
+        return packageToScan;
+    }
+
+    public IncomingPacketHandleMode getIncomingPacketHandleMode() {
+        return incomingPacketHandleMode;
+    }
+
+    public PacketHandler getPacketHandler() {
+        return packetHandler;
+    }
+
+    public ServerCallbackHandler getServerCallbackHandler() {
+        return serverCallbackHandler;
     }
 
     private boolean fixedNumberOfThreads() {
