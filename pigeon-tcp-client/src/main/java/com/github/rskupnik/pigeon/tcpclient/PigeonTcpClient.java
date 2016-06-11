@@ -43,7 +43,6 @@ public class PigeonTcpClient implements PigeonClient {
             incomingPacketQueue = null;
         }
 
-        // TODO: Let the user point a package to scan
         AnnotationsScanner.getInstance().scan(packageToScan);
 
         try {
@@ -107,5 +106,21 @@ public class PigeonTcpClient implements PigeonClient {
 
     public IncomingPacketQueue getIncomingPacketQueue() {
         return incomingPacketQueue;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public String getPackageToScan() {
+        return packageToScan;
+    }
+
+    public IncomingPacketHandleMode getIncomingPacketHandleMode() {
+        return incomingPacketHandleMode;
     }
 }

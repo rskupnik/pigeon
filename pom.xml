@@ -26,9 +26,9 @@
           <snapshots>
               <enabled>false</enabled>
           </snapshots>
-          <id>bintray-rskupnik-maven</id>
+          <id>central</id>
           <name>bintray</name>
-          <url>http://dl.bintray.com/rskupnik/maven</url>
+          <url>http://jcenter.bintray.com</url>
       </repository>
   </repositories>
 

@@ -4,7 +4,7 @@
 
   <groupId>com.github.rskupnik</groupId>
   <artifactId>pigeon-commons</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <packaging>jar</packaging>
   <name>pigeon-commons</name>
 
@@ -40,6 +40,28 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
+
+  <distributionManagement>
+    <repository>
+      <id>bintray-rskupnik-maven</id>
+      <name>rskupnik-maven</name>
+      <url>https://api.bintray.com/maven/rskupnik/maven/pigeon-commons/;publish=1</url>
+    </repository>
+  </distributionManagement>
 </project>
